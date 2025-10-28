@@ -1678,57 +1678,110 @@
 
         // Calculate total costs and show results
         function calculateTotalCosts() {
-            // Get base prices
-            const altPrice = parseFloat(document.getElementById('altPrice').value) || 0;
-            const scrPrice = parseFloat(document.getElementById('scrPrice').value) || 0;
-            const altProviderName = document.getElementById('altProviderName').value || 'Alternative Provider';
-            
-            // Get hidden costs (remove formatting)
-            const altHidden = parseFloat(document.getElementById('altTotalHidden').textContent.replace(/,/g, ''));
-            const scrHidden = parseFloat(document.getElementById('scrTotalHidden').textContent.replace(/,/g, ''));
-            
-            // Calculate totals
-            let altTotal = altPrice + altHidden;
-            const scrTotal = scrPrice + scrHidden;
-            
-            // Add expert network insight deficit if applicable
-            let insightDeficit = 0;
+            // Check if using expert analysis (optional section)
             if (includeExpertAnalysis) {
-                const numInterviews = parseInt(document.getElementById('numInterviews').value) || 20;
+                // When using expert analysis, use those costs as the base
+                const numInterviews = parseInt(document.getElementById('numInterviews').value) || 0;
+                const pricePerInterview = parseFloat(document.getElementById('pricePerInterview').value) || 0;
+                const scrPricePerInterview = parseFloat(document.getElementById('scrPricePerInterview').value) || 0;
+                
+                // If no interview data entered, alert user
+                if (numInterviews === 0 || pricePerInterview === 0 || scrPricePerInterview === 0) {
+                    alert('Please fill in the interview pricing details in the Optional section before calculating.');
+                    return;
+                }
+                
                 const respondentType = document.getElementById('respondentType').value;
-                const pricePerInterview = parseFloat(document.getElementById('pricePerInterview').value) || 1000;
                 const altOtherCosts = parseFloat(document.getElementById('altOtherCosts').value) || 0;
+                const scrOtherCosts = parseFloat(document.getElementById('scrOtherCosts').value) || 0;
                 const insightGain = insightGains[respondentType];
+                
+                // Calculate quality-adjusted costs
                 const altInterviewsNeeded = Math.ceil(numInterviews * (1 + insightGain / 100));
-                const extraInterviews = altInterviewsNeeded - numInterviews;
-                insightDeficit = extraInterviews * pricePerInterview;
-                altTotal += insightDeficit;
+                const altInterviewCosts = altInterviewsNeeded * pricePerInterview;
+                const scrInterviewCosts = numInterviews * scrPricePerInterview;
+                
+                // Get hidden costs
+                const altHidden = parseFloat(document.getElementById('altTotalHidden').textContent.replace(/,/g, '')) || 0;
+                const scrHidden = parseFloat(document.getElementById('scrTotalHidden').textContent.replace(/,/g, '')) || 0;
+                
+                // Total costs = Quality-adjusted interview costs + other project costs + hidden costs
+                const altTotal = altInterviewCosts + altOtherCosts + altHidden;
+                const scrTotal = scrInterviewCosts + scrOtherCosts + scrHidden;
+                
+                // Calculate savings
+                const savings = Math.round(altTotal - scrTotal);
+                const hoursSaved = parseInt(document.getElementById('altTotalHours').textContent) - 
+                                   parseInt(document.getElementById('scrTotalHours').textContent);
+                
+                // Update results
+                document.getElementById('savingsAmount').innerHTML = 
+                    savings > 0 ? `<span class="currency-symbol">${currentCurrency}</span>${formatNumber(savings)} SAVED` : `Investment in Quality`;
+                
+                document.getElementById('savingsMessage').textContent = 
+                    savings > 0 
+                    ? `Smart Connect Research delivers superior quality while saving you ${Math.round((savings / altTotal) * 100)}% on true project costs (including quality-adjusted interview costs).`
+                    : `Smart Connect Research delivers significantly higher quality with ${hoursSaved} hours saved and ${numInterviews} fewer interviews needed to achieve the same insight depth.`;
+                
+                document.getElementById('altTotalCost').innerHTML = `<span class="currency-symbol">${currentCurrency}</span>${formatNumber(altTotal)}`;
+                document.getElementById('scrTotalCost').innerHTML = `<span class="currency-symbol">${currentCurrency}</span>${formatNumber(scrTotal)}`;
+                document.getElementById('hoursSaved').textContent = `${hoursSaved} hrs`;
+                
+                // Show results
+                document.getElementById('resultsSection').classList.add('show');
+                document.getElementById('leadCapture').classList.add('show');
+                
+                // Create chart with per-interview breakdown
+                const altProviderName = document.getElementById('altProviderName').value || 'Alternative Provider';
+                const insightDeficit = (altInterviewsNeeded - numInterviews) * pricePerInterview;
+                displayChart(altProviderName, altInterviewCosts, altHidden, insightDeficit, altTotal, scrInterviewCosts, scrHidden, scrTotal);
+                
+            } else {
+                // Original logic when NOT using expert analysis
+                // Get base prices
+                const altPrice = parseFloat(document.getElementById('altPrice').value) || 0;
+                const scrPrice = parseFloat(document.getElementById('scrPrice').value) || 0;
+                const altProviderName = document.getElementById('altProviderName').value || 'Alternative Provider';
+                
+                // Validate that prices are entered
+                if (altPrice === 0 || scrPrice === 0) {
+                    alert('Please enter vendor prices before calculating.');
+                    return;
+                }
+                
+                // Get hidden costs (remove formatting)
+                const altHidden = parseFloat(document.getElementById('altTotalHidden').textContent.replace(/,/g, '')) || 0;
+                const scrHidden = parseFloat(document.getElementById('scrTotalHidden').textContent.replace(/,/g, '')) || 0;
+                
+                // Calculate totals
+                const altTotal = altPrice + altHidden;
+                const scrTotal = scrPrice + scrHidden;
+                
+                // Calculate savings
+                const savings = Math.round(altTotal - scrTotal);
+                const hoursSaved = parseInt(document.getElementById('altTotalHours').textContent) - 
+                                   parseInt(document.getElementById('scrTotalHours').textContent);
+                
+                // Update results
+                document.getElementById('savingsAmount').innerHTML = 
+                    savings > 0 ? `<span class="currency-symbol">${currentCurrency}</span>${formatNumber(savings)} SAVED` : `Investment in Quality`;
+                
+                document.getElementById('savingsMessage').textContent = 
+                    savings > 0 
+                    ? `Smart Connect Research delivers superior quality while saving you ${Math.round((savings / altTotal) * 100)}% on true project costs.`
+                    : `Smart Connect Research delivers significantly higher quality and ${hoursSaved} hours saved, justifying the investment.`;
+                
+                document.getElementById('altTotalCost').innerHTML = `<span class="currency-symbol">${currentCurrency}</span>${formatNumber(altTotal)}`;
+                document.getElementById('scrTotalCost').innerHTML = `<span class="currency-symbol">${currentCurrency}</span>${formatNumber(scrTotal)}`;
+                document.getElementById('hoursSaved').textContent = `${hoursSaved} hrs`;
+                
+                // Show results
+                document.getElementById('resultsSection').classList.add('show');
+                document.getElementById('leadCapture').classList.add('show');
+                
+                // Create chart
+                displayChart(altProviderName, altPrice, altHidden, 0, altTotal, scrPrice, scrHidden, scrTotal);
             }
-            
-            // Calculate savings
-            const savings = Math.round(altTotal - scrTotal);
-            const hoursSaved = parseInt(document.getElementById('altTotalHours').textContent) - 
-                               parseInt(document.getElementById('scrTotalHours').textContent);
-            
-            // Update results
-            document.getElementById('savingsAmount').innerHTML = 
-                savings > 0 ? `<span class="currency-symbol">${currentCurrency}</span>${formatNumber(savings)} SAVED` : `Investment in Quality`;
-            
-            document.getElementById('savingsMessage').textContent = 
-                savings > 0 
-                ? `Smart Connect Research delivers superior quality while saving you ${Math.round((savings / altTotal) * 100)}% on true project costs.`
-                : `Smart Connect Research delivers significantly higher quality and ${hoursSaved} hours saved, justifying the investment.`;
-            
-            document.getElementById('altTotalCost').innerHTML = `<span class="currency-symbol">${currentCurrency}</span>${formatNumber(altTotal)}`;
-            document.getElementById('scrTotalCost').innerHTML = `<span class="currency-symbol">${currentCurrency}</span>${formatNumber(scrTotal)}`;
-            document.getElementById('hoursSaved').textContent = `${hoursSaved} hrs`;
-            
-            // Show results
-            document.getElementById('resultsSection').classList.add('show');
-            document.getElementById('leadCapture').classList.add('show');
-            
-            // Create chart
-            displayChart(altProviderName, altPrice, altHidden, insightDeficit, altTotal, scrPrice, scrHidden, scrTotal);
             
             // Scroll to results
             document.getElementById('resultsSection').scrollIntoView({ 
